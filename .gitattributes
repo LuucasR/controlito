@@ -1,0 +1,31 @@
+# Normaliza los finales de linea: el repositorio guarda siempre LF.
+# Sin esto, un archivo commiteado desde Windows con CRLF puede romper el CI en
+# Linux, y los diffs se llenan de cambios fantasma de linea completa.
+* text=auto eol=lf
+
+# Archivos que SI deben tener CRLF: son de Windows.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binarios: git no debe tocarlos ni intentar hacerles diff.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.pdf  binary
+*.jar  binary
+*.keystore binary
+*.ttf  binary
+*.otf  binary
+*.woff binary
+*.woff2 binary
+*.wasm binary
+
+# Lockfiles: generados, no aportan nada en un code review.
+pnpm-lock.yaml   -diff linguist-generated
+pubspec.lock     -diff linguist-generated
+*.g.dart         -diff linguist-generated
+*.freezed.dart   -diff linguist-generated
