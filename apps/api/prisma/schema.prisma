@@ -1,6 +1,12 @@
 // Controlito - esquema de datos.
-// Etapa 0: solo la conexion. Los modelos entran en la Etapa 1 (auth)
-// y la Etapa 2 (servicios y condiciones).
+//
+// Convenciones que rigen todo el esquema:
+//  - Dinero: NUMERIC(20,4). Nunca float ni double.
+//  - Fechas de negocio (vencimientos, periodos): @db.Date, sin hora.
+//  - Instantes de sistema (auditoria): @db.Timestamptz(3), en UTC.
+//  - Multi-tenant: userId denormalizado en toda tabla, y clave foranea
+//    COMPUESTA hacia el padre, para que PostgreSQL rechace por si mismo
+//    cualquier registro que cruce usuarios.
 
 generator client {
   provider = "prisma-client-js"
@@ -11,4 +17,101 @@ datasource db {
   url       = env("DATABASE_URL")
   // Conexion sin pooler: Prisma la usa para migraciones.
   directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// IDENTIDAD
+// ─────────────────────────────────────────────────────────────
+
+enum AuthProvider {
+  PASSWORD
+  GOOGLE
+  APPLE
+}
+
+model User {
+  id String @id @db.Uuid
+
+  /// Siempre normalizado a minusculas por la aplicacion antes de escribir.
+  /// Se usa String y no citext para no depender de una extension de Postgres.
+  email       String  @unique
+  displayName String?
+
+  /// Zona horaria IANA del usuario. Define que dia es "hoy" al calcular
+  /// vencimientos, y a que hora se programan los avisos.
+  timezone        String @default("America/Argentina/Buenos_Aires")
+  locale          String @default("es-AR")
+  defaultCurrency String @default("ARS") @db.Char(3)
+
+  emailVerifiedAt DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+
+  identities    AuthIdentity[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+/// Una forma de autenticarse. La contrasena es una identidad mas, no una
+/// columna de User: asi agregar Google o Apple mas adelante es una fila nueva
+/// y un modulo nuevo, sin migrar la tabla de usuarios.
+model AuthIdentity {
+  id     String @id @db.Uuid
+  userId String @db.Uuid
+
+  provider AuthProvider
+
+  /// Identificador del usuario ante ese proveedor.
+  /// PASSWORD: el email normalizado. GOOGLE/APPLE: el "sub" del proveedor.
+  providerUserId String
+
+  /// Hash argon2id de la contrasena. Solo para provider = PASSWORD.
+  /// Nunca se guarda la contrasena en claro ni nada reversible.
+  secretHash String?
+
+  lastUsedAt DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@unique([userId, provider])
+  @@index([userId])
+  @@map("auth_identities")
+}
+
+/// Refresh token rotativo con deteccion de reuso.
+///
+/// Nunca se guarda el token: solo su SHA-256. Si llega uno ya consumido,
+/// significa que alguien lo robo, y se revoca la FAMILIA entera (todas las
+/// rotaciones descendientes de un mismo login).
+model RefreshToken {
+  id     String @id @db.Uuid
+  userId String @db.Uuid
+
+  tokenHash String @unique @db.Char(64)
+  familyId  String @db.Uuid
+
+  deviceLabel String?
+  userAgent   String?
+  ipAddress   String?
+
+  expiresAt DateTime @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  /// Se marca al rotarlo. Un token consumido que vuelve a aparecer es un robo.
+  consumedAt    DateTime? @db.Timestamptz(3)
+  revokedAt     DateTime? @db.Timestamptz(3)
+  /// Motivo de revocacion, para poder distinguir un logout de un robo detectado.
+  revokedReason String?
+  /// Token que lo reemplazo en la rotacion.
+  replacedById  String?   @db.Uuid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }

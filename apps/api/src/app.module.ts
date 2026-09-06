@@ -3,6 +3,7 @@ import { LoggerModule } from 'nestjs-pino';
 
 import { ConfigModule } from '@/infra/config/config.module';
 import { PrismaModule } from '@/infra/prisma/prisma.module';
+import { AuthModule } from '@/modules/auth/auth.module';
 import { HealthModule } from '@/modules/health/health.module';
 
 @Module({
@@ -19,6 +20,7 @@ import { HealthModule } from '@/modules/health/health.module';
       },
     }),
     PrismaModule,
+    AuthModule,
     HealthModule,
   ],
 })

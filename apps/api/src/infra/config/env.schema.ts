@@ -21,13 +21,50 @@ export const envSchema = z
 
     /** Zona horaria por defecto de un usuario nuevo (IANA). */
     DEFAULT_TZ: z.string().default('America/Argentina/Buenos_Aires'),
+
+    /**
+     * Secreto de firma del access token. En desarrollo hay un valor por
+     * defecto para que la app arranque sin configurar nada; en producción es
+     * obligatorio y debe tener al menos 32 caracteres.
+     */
+    JWT_ACCESS_SECRET: z.string().min(1).default('desarrollo-inseguro-cambiar-en-produccion'),
+
+    /**
+     * Vida del access token EN SEGUNDOS. Corta a propósito: se renueva con el
+     * refresh. Se usa un número y no un texto tipo '15m' para no tener que
+     * parsearlo a mano en ningún lado.
+     */
+    JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+
+    /** Vida del refresh token, en días. */
+    REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(30),
   })
   .superRefine((env, ctx) => {
-    if (env.NODE_ENV === 'production' && !env.DATABASE_URL) {
+    if (env.NODE_ENV !== 'production') return;
+
+    if (!env.DATABASE_URL) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['DATABASE_URL'],
         message: 'DATABASE_URL es obligatoria en producción',
+      });
+    }
+
+    // Un secreto por defecto en producción significa que cualquiera que lea el
+    // repositorio puede firmar tokens válidos.
+    if (env.JWT_ACCESS_SECRET.startsWith('desarrollo-inseguro')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['JWT_ACCESS_SECRET'],
+        message: 'JWT_ACCESS_SECRET no puede quedar con el valor de desarrollo en producción',
+      });
+    }
+
+    if (env.JWT_ACCESS_SECRET.length < 32) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['JWT_ACCESS_SECRET'],
+        message: 'JWT_ACCESS_SECRET debe tener al menos 32 caracteres en producción',
       });
     }
   });

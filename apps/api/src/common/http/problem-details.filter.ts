@@ -8,6 +8,8 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
+import { AppException } from './app-exception';
+
 /** Cuerpo de error según RFC 9457, extendido con `code` estable y `traceId`. */
 export interface ProblemDetails {
   type: string;
@@ -29,16 +31,18 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const isHttp = exception instanceof HttpException;
-    const status = isHttp ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+    const esApp = exception instanceof AppException;
+    const esHttp = exception instanceof HttpException;
+    const status = esHttp ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    // Los errores inesperados nunca exponen el stack: solo van al log con su traceId.
-    if (!isHttp) {
+    // Los errores inesperados nunca exponen el stack al cliente: solo van al
+    // log, correlacionables por traceId.
+    if (!esHttp) {
       this.logger.error(exception instanceof Error ? exception.stack : String(exception));
     }
 
-    const title = isHttp ? exception.message : 'Error interno del servidor';
-    const code = isHttp ? httpCodeFor(status) : 'INTERNAL_ERROR';
+    const title = esHttp ? exception.message : 'Error interno del servidor';
+    const code = esApp ? exception.code : esHttp ? httpCodeFor(status) : 'INTERNAL_ERROR';
 
     const problem: ProblemDetails = {
       type: `https://controlito.app/errors/${code.toLowerCase().replace(/_/g, '-')}`,
@@ -47,6 +51,8 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       code,
       instance: request.url,
       traceId: (request.headers['x-request-id'] as string | undefined) ?? undefined,
+      ...(esApp && exception.detail ? { detail: exception.detail } : {}),
+      ...(esApp && exception.errors ? { errors: exception.errors } : {}),
     };
 
     response.status(status).type('application/problem+json').send(problem);

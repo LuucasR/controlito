@@ -8,6 +8,10 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
+    // Los e2e cruzan a una base remota y argon2 es lento a proposito (es lo que
+    // lo hace resistente a fuerza bruta). 5s por defecto no alcanza.
+    testTimeout: 30_000,
+    hookTimeout: 60_000,
     coverage: {
       provider: 'v8',
       include: ['src/domain/**/*.ts'],

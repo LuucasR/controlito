@@ -20,10 +20,18 @@ services:
     # Se usa la variable y no el flag --prod=false porque ese flag cambio de
     # sintaxis entre versiones de pnpm; la variable funciona en todas.
     # En ejecucion sigue valiendo NODE_ENV=production, definido mas abajo.
+    #
+    # db:deploy aplica las migraciones pendientes (usa DIRECT_URL, sin pooler).
+    # Va en el build y no en un paso aparte porque el plan free no tiene comando
+    # pre-deploy. Si una migracion falla, el deploy falla, que es lo correcto.
+    # Contrapartida a tener en cuenta: corre mientras la version anterior sigue
+    # viva, asi que toda migracion debe ser compatible hacia atras (agregar
+    # antes de borrar, nunca las dos cosas en el mismo deploy).
     buildCommand: >-
       corepack enable &&
       NODE_ENV=development pnpm install --frozen-lockfile &&
       pnpm --filter @controlito/api db:generate &&
+      pnpm --filter @controlito/api db:deploy &&
       pnpm --filter @controlito/api build
 
     startCommand: pnpm --filter @controlito/api start
@@ -46,6 +54,13 @@ services:
         value: info
       - key: DEFAULT_TZ
         value: America/Argentina/Buenos_Aires
+
+      # Secreto de firma de los access tokens. Render lo genera solo (256 bits
+      # aleatorios) y nunca pasa por el repositorio ni por nuestras manos.
+      # Si se rota, todas las sesiones activas se invalidan: es el efecto
+      # deseado ante una filtracion.
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
 
       # Secretos: se cargan a mano en el panel de Render, nunca en el repo.
       - key: DATABASE_URL

@@ -1,7 +1,11 @@
 import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
 
 import { PrismaService } from '@/infra/prisma/prisma.service';
+import { Publico } from '@/modules/auth/decorators/public.decorator';
 
+// El guard de autenticacion es global: sin esto, Render no podria consultar
+// el health check y marcaria el servicio como caido.
+@Publico()
 @Controller({ path: 'health', version: '1' })
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
