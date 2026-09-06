@@ -125,8 +125,8 @@ class AdaptiveShell extends StatelessWidget {
   }
 
   void _irA(int index) => navigationShell.goBranch(
-        index,
-        // Volver a tocar el destino actual vuelve a la raiz de esa seccion.
-        initialLocation: index == navigationShell.currentIndex,
-      );
+    index,
+    // Volver a tocar el destino actual vuelve a la raiz de esa seccion.
+    initialLocation: index == navigationShell.currentIndex,
+  );
 }

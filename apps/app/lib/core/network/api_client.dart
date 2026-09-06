@@ -50,7 +50,10 @@ final saludApiProvider = FutureProvider<SaludApi>((ref) async {
     final baseDatos = data['database'] as String? ?? 'desconocida';
 
     return baseDatos == 'up'
-        ? const SaludApi(estado: EstadoApi.conectada, detalle: 'API y base de datos OK')
+        ? const SaludApi(
+            estado: EstadoApi.conectada,
+            detalle: 'API y base de datos OK',
+          )
         : SaludApi(
             estado: EstadoApi.degradada,
             detalle: 'API OK · base de datos: $baseDatos',

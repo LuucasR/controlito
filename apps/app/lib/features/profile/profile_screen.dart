@@ -8,10 +8,10 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const PantallaPendiente(
-        titulo: 'Perfil',
-        icono: Icons.person_outline,
-        etapa: 'Etapa 1',
-        descripcion:
-            'Cuenta, zona horaria y preferencias de notificación.\n\nAPI: $apiBaseUrl',
-      );
+    titulo: 'Perfil',
+    icono: Icons.person_outline,
+    etapa: 'Etapa 1',
+    descripcion:
+        'Cuenta, zona horaria y preferencias de notificación.\n\nAPI: $apiBaseUrl',
+  );
 }

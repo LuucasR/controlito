@@ -71,26 +71,52 @@ class _TarjetaConexion extends StatelessWidget {
         child: salud.when(
           loading: () => const Row(
             children: [
-              SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
               SizedBox(width: 12),
               Expanded(child: Text('Contactando la API…')),
             ],
           ),
-          error: (e, _) => _fila(context, Icons.error_outline, Colors.red, 'Error', '$e'),
+          error: (e, _) =>
+              _fila(context, Icons.error_outline, Colors.red, 'Error', '$e'),
           data: (s) => switch (s.estado) {
-            EstadoApi.conectada =>
-              _fila(context, Icons.check_circle_outline, Colors.green, 'Conectado', s.detalle),
-            EstadoApi.degradada =>
-              _fila(context, Icons.warning_amber_outlined, Colors.orange, 'Parcial', s.detalle),
-            EstadoApi.sinConexion =>
-              _fila(context, Icons.cloud_off_outlined, Colors.red, 'Sin conexión', s.detalle),
+            EstadoApi.conectada => _fila(
+              context,
+              Icons.check_circle_outline,
+              Colors.green,
+              'Conectado',
+              s.detalle,
+            ),
+            EstadoApi.degradada => _fila(
+              context,
+              Icons.warning_amber_outlined,
+              Colors.orange,
+              'Parcial',
+              s.detalle,
+            ),
+            EstadoApi.sinConexion => _fila(
+              context,
+              Icons.cloud_off_outlined,
+              Colors.red,
+              'Sin conexión',
+              s.detalle,
+            ),
           },
         ),
       ),
     );
   }
 
-  Widget _fila(BuildContext context, IconData icono, Color color, String titulo, String detalle) {
+  Widget _fila(
+    BuildContext context,
+    IconData icono,
+    Color color,
+    String titulo,
+    String detalle,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -140,9 +166,17 @@ class _TarjetaEjemplo extends StatelessWidget {
               ],
             ),
             const Divider(height: 24),
-            _linea(context, 'Última factura', MoneyFormat.desdeJson('25000.00')),
+            _linea(
+              context,
+              'Última factura',
+              MoneyFormat.desdeJson('25000.00'),
+            ),
             _linea(context, 'Pagado', MoneyFormat.desdeJson('15000.00')),
-            _linea(context, 'Saldo pendiente', MoneyFormat.desdeJson('10000.00')),
+            _linea(
+              context,
+              'Saldo pendiente',
+              MoneyFormat.desdeJson('10000.00'),
+            ),
             _linea(context, 'Interés estimado', MoneyFormat.estimado('500.00')),
             const Divider(height: 24),
             _linea(
@@ -157,7 +191,12 @@ class _TarjetaEjemplo extends StatelessWidget {
     );
   }
 
-  Widget _linea(BuildContext context, String etiqueta, String valor, {bool destacado = false}) {
+  Widget _linea(
+    BuildContext context,
+    String etiqueta,
+    String valor, {
+    bool destacado = false,
+  }) {
     final estilo = destacado
         ? Theme.of(context).textTheme.titleMedium
         : Theme.of(context).textTheme.bodyMedium;
@@ -171,7 +210,9 @@ class _TarjetaEjemplo extends StatelessWidget {
           Text(
             valor,
             // Cifras tabulares: sin esto las columnas de montos no alinean.
-            style: estilo?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+            style: estilo?.copyWith(
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         ],
       ),

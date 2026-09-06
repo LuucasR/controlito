@@ -11,7 +11,10 @@ abstract final class AppTheme {
   static ThemeData dark() => _build(Brightness.dark);
 
   static ThemeData _build(Brightness brightness) {
-    final scheme = ColorScheme.fromSeed(seedColor: _seed, brightness: brightness);
+    final scheme = ColorScheme.fromSeed(
+      seedColor: _seed,
+      brightness: brightness,
+    );
     return ThemeData(
       colorScheme: scheme,
       useMaterial3: true,
@@ -23,7 +26,9 @@ abstract final class AppTheme {
           side: BorderSide(color: scheme.outlineVariant),
         ),
       ),
-      inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
+      inputDecorationTheme: const InputDecorationTheme(
+        border: OutlineInputBorder(),
+      ),
     );
   }
 }
@@ -37,7 +42,11 @@ enum EstadoVisual {
   vencido(Icons.error_outline, 'Vencido', Color(0xFFC62828)),
   porVerificar(Icons.help_outline, 'Por verificar', Color(0xFFEF6C00)),
   estimado(Icons.schedule, 'Estimado', Color(0xFF1565C0)),
-  diferencia(Icons.warning_amber_outlined, 'Diferencia detectada', Color(0xFFD84315));
+  diferencia(
+    Icons.warning_amber_outlined,
+    'Diferencia detectada',
+    Color(0xFFD84315),
+  );
 
   const EstadoVisual(this.icono, this.etiqueta, this.color);
 

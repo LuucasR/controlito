@@ -7,11 +7,11 @@ class AlertsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const PantallaPendiente(
-        titulo: 'Alertas',
-        icono: Icons.notifications_outlined,
-        etapa: 'Etapa 4',
-        descripcion:
-            'Cambios detectados: aumentos de monto, corrimientos de vencimiento, '
-            'facturas faltantes y deuda incluida en una factura.',
-      );
+    titulo: 'Alertas',
+    icono: Icons.notifications_outlined,
+    etapa: 'Etapa 4',
+    descripcion:
+        'Cambios detectados: aumentos de monto, corrimientos de vencimiento, '
+        'facturas faltantes y deuda incluida en una factura.',
+  );
 }

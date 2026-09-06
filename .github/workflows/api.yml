@@ -7,6 +7,13 @@ on:
   pull_request:
     paths: ['apps/api/**', 'packages/**', '.github/workflows/api.yml', 'pnpm-workspace.yaml']
 
+env:
+  # Base inalcanzable a proposito: los tests de esta etapa no necesitan una base
+  # real, pero Prisma exige que la variable exista para construir el cliente.
+  # Cuando la Etapa 1 introduzca tablas, se reemplaza por una branch efimera de Neon.
+  DATABASE_URL: postgresql://ci:ci@localhost:5432/controlito_ci
+  DIRECT_URL: postgresql://ci:ci@localhost:5432/controlito_ci
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -22,21 +29,21 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      # --prod=false: sin esto pnpm omite las devDependencies y no hay compilador.
+      - run: pnpm install --frozen-lockfile --prod=false
 
       - name: Generar cliente Prisma
         run: pnpm --filter @controlito/api db:generate
 
-      - name: Verificar que el schema no cambio sin migracion
-        run: pnpm --filter @controlito/api exec prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "${{ secrets.SHADOW_DATABASE_URL }}" --exit-code || echo "Sin migraciones todavia (Etapa 0)"
-
+      # Incluye la regla que impide que src/domain importe NestJS o Prisma.
       - run: pnpm lint
 
       - run: pnpm typecheck
 
-      - name: Tests del dominio (umbral 95%)
+      - name: Tests del motor financiero
         run: pnpm test
 
-      - run: pnpm test:e2e
+      - name: Tests HTTP end to end
+        run: pnpm test:e2e
 
       - run: pnpm build

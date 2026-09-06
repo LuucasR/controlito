@@ -9,9 +9,10 @@ abstract final class MoneyFormat {
   static final Map<String, NumberFormat> _cache = {};
 
   static NumberFormat _formatter(String currency) => _cache.putIfAbsent(
-        currency,
-        () => NumberFormat.currency(locale: 'es_AR', symbol: r'$', decimalDigits: 2),
-      );
+    currency,
+    () =>
+        NumberFormat.currency(locale: 'es_AR', symbol: r'$', decimalDigits: 2),
+  );
 
   /// Formatea un monto que llega del backend como string decimal.
   static String desdeJson(String amount, {String currency = 'ARS'}) =>

@@ -19,18 +19,21 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.47.2
           cache: true
 
       - run: flutter pub get
 
-      - run: dart format --set-exit-if-changed .
+      - run: dart format --set-exit-if-changed --output=none .
 
       - run: flutter analyze --fatal-infos
 
       - run: flutter test
 
-      # CRITICO: atrapa cualquier import de dart:io que rompa la compilacion web,
-      # que es el error mas caro de descubrir tarde en un proyecto Flutter multiplataforma.
+      # CRITICO: es el paso que detecta un import de dart:io u otra API no
+      # disponible en navegador. Ese error, descubierto tarde, es el mas caro
+      # de un proyecto Flutter multiplataforma.
       - run: flutter build web --release
 
-      - run: flutter build apk --debug
+      # El build de APK se agrega cuando configuremos el toolchain de Android.
+      # Hoy no aporta senal y agrega varios minutos a cada PR.

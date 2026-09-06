@@ -19,7 +19,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: true,
     routes: [
       StatefulShellRoute.indexedStack(
-        builder: (context, state, shell) => AdaptiveShell(navigationShell: shell),
+        builder: (context, state, shell) =>
+            AdaptiveShell(navigationShell: shell),
         branches: [
           StatefulShellBranch(
             routes: [
@@ -28,17 +29,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/servicios', builder: (_, _) => const ServicesScreen()),
+              GoRoute(
+                path: '/servicios',
+                builder: (_, _) => const ServicesScreen(),
+              ),
             ],
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/alertas', builder: (_, _) => const AlertsScreen()),
+              GoRoute(
+                path: '/alertas',
+                builder: (_, _) => const AlertsScreen(),
+              ),
             ],
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/perfil', builder: (_, _) => const ProfileScreen()),
+              GoRoute(
+                path: '/perfil',
+                builder: (_, _) => const ProfileScreen(),
+              ),
             ],
           ),
         ],
