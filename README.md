@@ -22,7 +22,7 @@ docs/adr/  decisiones arquitectonicas
 | Node.js | >= 22 | v24.18.0 |
 | pnpm | >= 10 | 11.20.0 |
 | Flutter | stable | `C:\Users\Lucas\dev\flutter` |
-| PostgreSQL | 16+ | Neon, region US East (pendiente de configurar) |
+| PostgreSQL | 17 | Neon, region US East (Ohio) |
 
 ## Puesta en marcha
 
@@ -58,8 +58,8 @@ pnpm build
 
 ## Deploy
 
-El backend se despliega en **Render** (region Virginia) mediante `render.yaml`, y la base
-de datos es **Neon** en **US East**, co-ubicada con el backend. El razonamiento esta en
+El backend se despliega en **Render** (region Ohio) mediante `render.yaml`, y la base
+de datos es **Neon** en **US East (Ohio)**, co-ubicada con el backend. El razonamiento esta en
 `docs/adr/0001-hosting-y-base-de-datos.md`.
 
 El plan completo (modelo de datos, formulas del dashboard, casos borde y roadmap) esta en

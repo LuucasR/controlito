@@ -6,11 +6,11 @@ services:
   - type: web
     name: controlito-api
     runtime: node
-    # Virginia es la region de Render mas cercana a Argentina.
-    # La base de datos (Neon) va en US East para quedar CO-UBICADA con esta
-    # instancia: el backend le hace varias consultas por request, y esa
-    # latencia pesa mucho mas que la del celular al backend.
-    region: virginia
+    # Ohio, la MISMA region que la base en Neon (aws-us-east-2).
+    # Co-ubicar backend y base importa mas que acercar el backend al usuario:
+    # un request del celular cruza la distancia una vez, pero el backend le
+    # hace varias consultas seguidas a la base y cada una paga esa latencia.
+    region: ohio
     plan: free
     rootDir: .
     branch: main

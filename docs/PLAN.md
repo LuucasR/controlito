@@ -214,8 +214,8 @@ GET /v1/notifications/plan?horizonDays=60
 
 | Pieza | Elegido | Por qué |
 |---|---|---|
-| Base de datos | **Neon**, región **US East (Virginia)** | Free tier sin expiración — el PostgreSQL free de Render se borra a los **30 días** (+14 de gracia), verificado en su changelog. Va **co-ubicada con el backend**, no cerca del usuario: un request del celular cruza la distancia una vez, pero el backend le hace varias consultas seguidas a la base, y esa latencia se multiplica. Además da **branching copy-on-write en ~1s** → testing sin Docker (que no tenés instalado). |
-| API | Render (región **Virginia**) — **free para staging, Starter (US$7) para producción** | En free el servicio duerme a los 15 min y despertar tarda **30-60s**. No hay atajo. Mitigación en el cliente igualmente: timeout de 60s y UI de "Despertando el servidor…" en vez de un spinner mudo. |
+| Base de datos | **Neon**, región **US East (Ohio)** | Free tier sin expiración — el PostgreSQL free de Render se borra a los **30 días** (+14 de gracia), verificado en su changelog. Va **co-ubicada con el backend**, no cerca del usuario: un request del celular cruza la distancia una vez, pero el backend le hace varias consultas seguidas a la base, y esa latencia se multiplica. Además da **branching copy-on-write en ~1s** → testing sin Docker (que no tenés instalado). |
+| API | Render (región **Ohio**, la misma que la base) — **free para staging, Starter (US$7) para producción** | En free el servicio duerme a los 15 min y despertar tarda **30-60s**. No hay atajo. Mitigación en el cliente igualmente: timeout de 60s y UI de "Despertando el servidor…" en vez de un spinner mudo. |
 | Web | Cloudflare Pages | Estático, CDN, previews por PR, gratis. Requiere `_redirects` con `/* /index.html 200` o un F5 en `/services/123` da 404. |
 | Monorepo | pnpm workspaces, **sin Turborepo** | API y app están totalmente acopladas por el contrato: un cambio de campo debe ser **un PR atómico**. Turborepo es overhead con 2 apps. |
 
@@ -664,6 +664,6 @@ OCR de facturas (siempre editable antes de guardar, nunca auto-guardado) · pres
 Las resolvemos cuando lleguemos a la etapa que las necesita:
 
 - **Dominio propio** (~US$10/año) — habilita cookies `httpOnly` seguras en web. Decidir antes de la Etapa 10. Mientras tanto, `localStorage` con rotación agresiva.
-- **Latencia desde Argentina** — Render no tiene región en Sudamérica (Oregon, Ohio, Virginia, Frankfurt, Singapur): desde Buenos Aires son ~150-200ms contra Virginia. Se mitiga con el diseño (el dashboard es **una sola llamada**, no seis). Si un día molesta, Fly.io tiene región `gru` en São Paulo (~30ms) y el backend es portable. Revisar en la Etapa 10.
+- **Latencia desde Argentina** — Render no tiene región en Sudamérica (Oregon, Ohio, Virginia, Frankfurt, Singapur): desde Buenos Aires son ~150-200ms contra Ohio. Se mitiga con el diseño (el dashboard es **una sola llamada**, no seis). Si un día molesta, Fly.io tiene región `gru` en São Paulo (~30ms) y el backend es portable. Revisar en la Etapa 10.
 - **Hogar compartido** — si es probable a mediano plazo, conviene decidirlo antes de V1.
 - **Catálogo de proveedores argentinos precargado** (Movistar, Edenor, Metrogas, AySA…) — mejora mucho el alta de servicios; se puede sembrar en cualquier momento.

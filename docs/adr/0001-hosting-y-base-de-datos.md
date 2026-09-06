@@ -20,8 +20,8 @@ Datos verificados el 2026-09-06 en la documentación y el changelog de Render:
 
 ## Decisión
 
-- **Backend:** Render, región **Virginia** (la más cercana a Argentina de las cinco).
-- **Base de datos:** **Neon**, región **US East**, es decir **co-ubicada con el backend**.
+- **Backend:** Render, región **Ohio** (`us-east-2`).
+- **Base de datos:** **Neon**, región **US East (Ohio)** — la **misma** región que el backend.
 
 ## Corrección respecto del plan original
 
@@ -45,7 +45,7 @@ Costo: dos paneles de administración en lugar de uno.
 
 ## Consecuencias
 
-- ~150-200ms de latencia desde Buenos Aires hasta Virginia. Se mitiga por diseño:
+- ~150-200ms de latencia desde Buenos Aires hasta Ohio. Se mitiga por diseño:
   el dashboard se sirve en **una sola llamada** en vez de seis (ver §6 del plan).
 - El cliente Flutter usa timeout de 60s y una UI de "Despertando el servidor…" para el
   arranque en frío del plan free. Producción debería ir a Starter (US$7/mes).
