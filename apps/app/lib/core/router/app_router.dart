@@ -9,6 +9,8 @@ import '../../features/auth/presentation/providers/auth_controller.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/profile/profile_screen.dart';
+import '../../features/services/presentation/service_detail_screen.dart';
+import '../../features/services/presentation/service_form_screen.dart';
 import '../../features/services/services_screen.dart';
 import 'adaptive_shell.dart';
 
@@ -64,6 +66,20 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/servicios',
                 builder: (_, _) => const ServicesScreen(),
+                // Van como rutas hijas para que el boton atras del navegador
+                // devuelva a la lista y no fuera de la seccion.
+                routes: [
+                  GoRoute(
+                    path: 'nuevo',
+                    builder: (_, _) => const ServiceFormScreen(),
+                  ),
+                  GoRoute(
+                    path: ':id',
+                    builder: (_, state) => ServiceDetailScreen(
+                      servicioId: state.pathParameters['id']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
