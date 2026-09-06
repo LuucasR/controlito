@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/money/money_format.dart';
+import '../../cycles/presentation/cycle_tile.dart';
+import '../../cycles/presentation/cycles_providers.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/services_api.dart';
 import '../domain/servicio.dart';
@@ -58,14 +60,15 @@ class ServiceDetailScreen extends ConsumerWidget {
   }
 }
 
-class _Detalle extends StatelessWidget {
+class _Detalle extends ConsumerWidget {
   const _Detalle({required this.servicio});
 
   final Servicio servicio;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final ciclos = ref.watch(ciclosDelServicioProvider(servicio.id));
     final vigente = servicio.currentCondition;
 
     return ListView(
@@ -120,9 +123,49 @@ class _Detalle extends StatelessWidget {
           )
         else
           _TarjetaCondicion(condicion: vigente, destacada: true),
+        const SizedBox(height: 24),
+        Text('Períodos', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 4),
+        Text(
+          'Se generan solos a partir de las condiciones. Los montos son estimados '
+          'hasta que registres la factura real.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ciclos.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, _) => Card(
+            child: ListTile(
+              leading: const Icon(Icons.error_outline),
+              title: const Text('No se pudieron cargar los períodos'),
+              subtitle: Text('$e'),
+            ),
+          ),
+          data: (lista) => lista.isEmpty
+              ? const Card(
+                  child: ListTile(
+                    leading: Icon(Icons.info_outline),
+                    title: Text('Sin períodos'),
+                    subtitle: Text(
+                      'Un servicio sin periodicidad fija no genera períodos por adelantado',
+                    ),
+                  ),
+                )
+              : Column(
+                  children: [
+                    for (final c in lista.take(12))
+                      CycleTile(ciclo: c, mostrarServicio: false),
+                  ],
+                ),
+        ),
         if (servicio.conditions.length > 1) ...[
           const SizedBox(height: 24),
-          Text('Historial', style: theme.textTheme.titleMedium),
+          Text('Historial de condiciones', style: theme.textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(
             'Las condiciones anteriores no se borran: gracias a esto se puede saber '

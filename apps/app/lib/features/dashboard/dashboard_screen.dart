@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/money/money_format.dart';
-import '../../core/network/api_client.dart';
-import '../../core/theme/app_theme.dart';
 import '../auth/domain/session.dart';
 import '../auth/presentation/providers/auth_controller.dart';
+import '../cycles/domain/ciclo.dart';
+import '../cycles/presentation/cycle_tile.dart';
+import '../cycles/presentation/cycles_providers.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final salud = ref.watch(saludApiProvider);
     final auth = ref.watch(authControllerProvider);
+    final proximos = ref.watch(proximosVencimientosProvider);
     final saludo = auth is AuthConSesion
         ? 'Hola, ${auth.usuario.nombreVisible}'
         : 'Controlito';
@@ -24,118 +26,202 @@ class DashboardScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Actualizar',
-            onPressed: () => ref.invalidate(saludApiProvider),
+            onPressed: () => ref.invalidate(proximosVencimientosProvider),
             icon: const Icon(Icons.refresh),
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _TarjetaConexion(salud: salud),
-          const SizedBox(height: 16),
-          Text('Vista previa', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          const _TarjetaEjemplo(),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Etapa 0 — Fundaciones',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'El esqueleto está listo: navegación adaptativa, formato es-AR y '
-                    'conexión con la API. Las métricas reales llegan en la Etapa 7, '
-                    'después de construir servicios, facturas, pagos y proyecciones.',
-                  ),
-                ],
-              ),
-            ),
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(proximosVencimientosProvider),
+        child: proximos.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => _Error(
+            mensaje: '$e',
+            reintentar: () => ref.invalidate(proximosVencimientosProvider),
           ),
-        ],
+          data: (ciclos) => _Contenido(ciclos: ciclos),
+        ),
       ),
     );
   }
 }
 
-class _TarjetaConexion extends StatelessWidget {
-  const _TarjetaConexion({required this.salud});
+class _Contenido extends StatelessWidget {
+  const _Contenido({required this.ciclos});
 
-  final AsyncValue<SaludApi> salud;
+  final List<Ciclo> ciclos;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: salud.when(
-          loading: () => const Row(
+    final theme = Theme.of(context);
+
+    if (ciclos.isEmpty) return const _SinVencimientos();
+
+    final vencidos = ciclos.where((c) => c.isOverdue).toList();
+    final porVencer = ciclos.where((c) => !c.isOverdue).toList();
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _Resumen(ciclos: ciclos),
+        if (vencidos.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Row(
             children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+              Icon(
+                Icons.error_outline,
+                size: 18,
+                color: theme.colorScheme.error,
               ),
-              SizedBox(width: 12),
-              Expanded(child: Text('Contactando la API…')),
+              const SizedBox(width: 6),
+              Text(
+                'Vencidos',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
             ],
           ),
-          error: (e, _) =>
-              _fila(context, Icons.error_outline, Colors.red, 'Error', '$e'),
-          data: (s) => switch (s.estado) {
-            EstadoApi.conectada => _fila(
-              context,
-              Icons.check_circle_outline,
-              Colors.green,
-              'Conectado',
-              s.detalle,
+          const SizedBox(height: 8),
+          ...vencidos.map(
+            (c) => CycleTile(ciclo: c, onTap: () => _abrir(context, c)),
+          ),
+        ],
+        const SizedBox(height: 24),
+        Text('Próximos vencimientos', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 8),
+        if (porVencer.isEmpty)
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.check_circle_outline),
+              title: Text('No hay vencimientos próximos'),
             ),
-            EstadoApi.degradada => _fila(
-              context,
-              Icons.warning_amber_outlined,
-              Colors.orange,
-              'Parcial',
-              s.detalle,
+          )
+        else
+          ...porVencer.map(
+            (c) => CycleTile(ciclo: c, onTap: () => _abrir(context, c)),
+          ),
+        const SizedBox(height: 24),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Qué falta', style: theme.textTheme.titleSmall),
+                const SizedBox(height: 8),
+                const Text(
+                  'Estos montos salen de las condiciones que cargaste, no de facturas '
+                  'reales. En la próxima etapa vas a poder registrar la factura que '
+                  'llega y comparar cuánto vino contra cuánto debería haber venido.',
+                ),
+              ],
             ),
-            EstadoApi.sinConexion => _fila(
-              context,
-              Icons.cloud_off_outlined,
-              Colors.red,
-              'Sin conexión',
-              s.detalle,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _abrir(BuildContext context, Ciclo ciclo) =>
+      context.go('/servicios/${ciclo.serviceId}');
+}
+
+/// Resumen de lo que viene.
+///
+/// Los montos son ESTIMADOS y se dice explícitamente: salen de las condiciones
+/// pactadas, no de facturas reales. Cuando algún servicio no se puede estimar,
+/// se aclara cuántos quedaron afuera en vez de sumar cero por ellos, que daría
+/// un total falsamente preciso.
+class _Resumen extends StatelessWidget {
+  const _Resumen({required this.ciclos});
+
+  final List<Ciclo> ciclos;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final conMonto = ciclos.where((c) => c.expectedAmount != null);
+    final sinMonto = ciclos.length - conMonto.length;
+
+    final total = conMonto.isEmpty
+        ? null
+        : conMonto.map((c) => c.expectedAmount!).reduce((a, b) => a + b);
+
+    return Card(
+      color: theme.colorScheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Estimado para los próximos 45 días',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
             ),
-          },
+            const SizedBox(height: 8),
+            Text(
+              total == null
+                  ? MoneyFormat.desconocido
+                  : MoneyFormat.estimado(total.toString()),
+              style: theme.textTheme.headlineMedium?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${ciclos.length} ${ciclos.length == 1 ? "vencimiento" : "vencimientos"}'
+              '${sinMonto > 0 ? " · $sinMonto sin estimación" : ""}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
 
-  Widget _fila(
-    BuildContext context,
-    IconData icono,
-    Color color,
-    String titulo,
-    String detalle,
-  ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+class _SinVencimientos extends StatelessWidget {
+  const _SinVencimientos();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ListView(
+      padding: const EdgeInsets.all(32),
       children: [
-        Icon(icono, color: color),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(titulo, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 2),
-              Text(detalle, style: Theme.of(context).textTheme.bodySmall),
-            ],
+        const SizedBox(height: 48),
+        Icon(
+          Icons.event_available_outlined,
+          size: 56,
+          color: theme.colorScheme.primary,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Todavía no hay vencimientos',
+          style: theme.textTheme.titleMedium,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Cargá un servicio con su monto y su día de vencimiento, y acá van a '
+          'aparecer los períodos que vienen.',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 24),
+        Center(
+          child: FilledButton.icon(
+            onPressed: () => context.go('/servicios/nuevo'),
+            icon: const Icon(Icons.add),
+            label: const Text('Cargar un servicio'),
           ),
         ),
       ],
@@ -143,85 +229,39 @@ class _TarjetaConexion extends StatelessWidget {
   }
 }
 
-/// Muestra el contrato de dinero y los estados visuales ya funcionando.
-/// Los montos son los del ejemplo del plan, todavia con datos fijos.
-class _TarjetaEjemplo extends StatelessWidget {
-  const _TarjetaEjemplo();
+class _Error extends StatelessWidget {
+  const _Error({required this.mensaje, required this.reintentar});
+
+  final String mensaje;
+  final VoidCallback reintentar;
 
   @override
   Widget build(BuildContext context) {
-    const estado = EstadoVisual.pagoParcial;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Movistar · Internet Fibra 600 MB',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                Icon(estado.icono, size: 18, color: estado.color),
-                const SizedBox(width: 4),
-                Text(estado.etiqueta, style: TextStyle(color: estado.color)),
-              ],
-            ),
-            const Divider(height: 24),
-            _linea(
-              context,
-              'Última factura',
-              MoneyFormat.desdeJson('25000.00'),
-            ),
-            _linea(context, 'Pagado', MoneyFormat.desdeJson('15000.00')),
-            _linea(
-              context,
-              'Saldo pendiente',
-              MoneyFormat.desdeJson('10000.00'),
-            ),
-            _linea(context, 'Interés estimado', MoneyFormat.estimado('500.00')),
-            const Divider(height: 24),
-            _linea(
-              context,
-              'Próxima factura estimada',
-              MoneyFormat.estimado('35500.00'),
-              destacado: true,
-            ),
-          ],
+    return ListView(
+      padding: const EdgeInsets.all(32),
+      children: [
+        const SizedBox(height: 48),
+        Icon(
+          Icons.cloud_off_outlined,
+          size: 48,
+          color: Theme.of(context).colorScheme.error,
         ),
-      ),
-    );
-  }
-
-  Widget _linea(
-    BuildContext context,
-    String etiqueta,
-    String valor, {
-    bool destacado = false,
-  }) {
-    final estilo = destacado
-        ? Theme.of(context).textTheme.titleMedium
-        : Theme.of(context).textTheme.bodyMedium;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(etiqueta, style: estilo),
-          Text(
-            valor,
-            // Cifras tabulares: sin esto las columnas de montos no alinean.
-            style: estilo?.copyWith(
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+        const SizedBox(height: 12),
+        Text(mensaje, textAlign: TextAlign.center),
+        const SizedBox(height: 8),
+        Text(
+          'Si el servidor estuvo inactivo, el primer pedido puede tardar hasta un minuto.',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: FilledButton.tonal(
+            onPressed: reintentar,
+            child: const Text('Reintentar'),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
