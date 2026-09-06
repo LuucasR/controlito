@@ -94,6 +94,102 @@ describe.skipIf(requiereBase)('Aislamiento entre usuarios (e2e)', () => {
       .expect(200);
   });
 
+
+  describe('servicios', () => {
+    let servicioDeA: string;
+
+    beforeAll(async () => {
+      const res = await request(h.server)
+        .post('/api/v1/services')
+        .set('Authorization', `Bearer ${usuarioA.accessToken}`)
+        .send({
+          name: 'Servicio privado de A',
+          startDate: '2026-09-01',
+          condition: {
+            validFrom: '2026-09-01',
+            amountMode: 'FIXED',
+            baseAmount: '25000',
+            dueDayOfMonth: 10,
+          },
+        })
+        .expect(201);
+
+      servicioDeA = (res.body as { id: string }).id;
+    });
+
+    it('B no ve el servicio de A en su lista', async () => {
+      const res = await request(h.server)
+        .get('/api/v1/services')
+        .set('Authorization', `Bearer ${usuarioB.accessToken}`)
+        .expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+
+    it('B recibe 404 al pedir el servicio de A, no 403', async () => {
+      // Un 403 confirmaria que el recurso existe. El 404 no dice nada.
+      const res = await request(h.server)
+        .get(`/api/v1/services/${servicioDeA}`)
+        .set('Authorization', `Bearer ${usuarioB.accessToken}`)
+        .expect(404);
+
+      expect((res.body as { code: string }).code).toBe('SERVICE_NOT_FOUND');
+    });
+
+    it('B no puede modificar el servicio de A', async () => {
+      await request(h.server)
+        .patch(`/api/v1/services/${servicioDeA}`)
+        .set('Authorization', `Bearer ${usuarioB.accessToken}`)
+        .send({ name: 'Secuestrado' })
+        .expect(404);
+
+      // Y el nombre quedo intacto.
+      const res = await request(h.server)
+        .get(`/api/v1/services/${servicioDeA}`)
+        .set('Authorization', `Bearer ${usuarioA.accessToken}`)
+        .expect(200);
+      expect((res.body as { name: string }).name).toBe('Servicio privado de A');
+    });
+
+    it('B no puede archivar el servicio de A', async () => {
+      await request(h.server)
+        .delete(`/api/v1/services/${servicioDeA}`)
+        .set('Authorization', `Bearer ${usuarioB.accessToken}`)
+        .expect(404);
+    });
+
+    it('B no puede agregarle condiciones al servicio de A', async () => {
+      await request(h.server)
+        .post(`/api/v1/services/${servicioDeA}/conditions`)
+        .set('Authorization', `Bearer ${usuarioB.accessToken}`)
+        .send({
+          validFrom: '2027-01-01',
+          amountMode: 'FIXED',
+          baseAmount: '1',
+          dueDayOfMonth: 1,
+        })
+        .expect(404);
+    });
+
+    it('las categorias del sistema las ven los dos, pero no las ajenas', async () => {
+      const deA = await request(h.server)
+        .get('/api/v1/categories')
+        .set('Authorization', `Bearer ${usuarioA.accessToken}`)
+        .expect(200);
+      const deB = await request(h.server)
+        .get('/api/v1/categories')
+        .set('Authorization', `Bearer ${usuarioB.accessToken}`)
+        .expect(200);
+
+      const soloSistema = (body: unknown) =>
+        (body as Array<{ isSystem: boolean }>).every((c) => c.isSystem);
+
+      expect(soloSistema(deA.body)).toBe(true);
+      expect(soloSistema(deB.body)).toBe(true);
+      expect((deA.body as unknown[]).length).toBe((deB.body as unknown[]).length);
+    });
+  });
+
   /**
    * Red de seguridad ante rutas nuevas.
    *
@@ -104,7 +200,8 @@ describe.skipIf(requiereBase)('Aislamiento entre usuarios (e2e)', () => {
    */
   it('toda ruta con :id está cubierta por esta suite', () => {
     const cubiertas = new Set<string>([
-      // Se completa a medida que aparezcan rutas con :id (Etapa 2 en adelante).
+      '/api/v1/services/:id',
+      '/api/v1/services/:id/conditions',
     ]);
 
     const servidor = h.app.getHttpAdapter().getInstance() as {

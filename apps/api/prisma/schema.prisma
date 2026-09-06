@@ -49,6 +49,8 @@ model User {
 
   identities    AuthIdentity[]
   refreshTokens RefreshToken[]
+  categories    Category[]
+  services      Service[]
 
   @@map("users")
 }
@@ -114,4 +116,187 @@ model RefreshToken {
   @@index([userId, familyId])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+// ─────────────────────────────────────────────────────────────
+// CATEGORIAS Y SERVICIOS
+// ─────────────────────────────────────────────────────────────
+
+enum ServiceStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+enum BillingFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  BIMONTHLY
+  QUARTERLY
+  SEMIANNUAL
+  ANNUAL
+  /// Sin periodicidad fija: los ciclos se crean al cargar una factura.
+  ON_DEMAND
+}
+
+enum AmountMode {
+  /// Abono fijo conocido: Netflix, alquiler.
+  FIXED
+  /// Varia, pero se puede estimar a partir de una base: luz, gas.
+  VARIABLE_ESTIMATED
+  /// Varia y no se estima. El tablero muestra "?" en vez de inventar un numero.
+  VARIABLE_UNKNOWN
+}
+
+enum DueDayPolicy {
+  /// Dia 31 en un mes corto cae el ultimo dia del mes. Es el comportamiento
+  /// habitual de los servicios y el valor por defecto.
+  CLAMP_TO_LAST_DAY
+  /// Dia 31 en un mes corto pasa al mes siguiente. Poco frecuente.
+  ROLL_FORWARD
+  /// El vencimiento no se proyecta: lo trae cada factura.
+  FROM_INVOICE_ONLY
+}
+
+enum DebtPolicy {
+  /// La deuda impaga aparece en la proxima factura.
+  ACCUMULATES_INTO_NEXT_INVOICE
+  /// Se paga por separado, con boleta de deuda o plan de pago.
+  PAID_SEPARATELY
+  /// No hay deuda: si no se paga, cortan el servicio.
+  NO_DEBT_SERVICE_CUT
+  /// No se sabe. Es el valor por defecto: no se asume nada que el usuario no
+  /// haya configurado.
+  UNKNOWN
+}
+
+enum InterestModel {
+  NONE
+  MONTHLY_PERCENT
+  DAILY_PERCENT
+  FIXED_FEE
+  /// Hay interes pero no se conoce la regla. El valor por defecto es este y no
+  /// NONE: afirmar que el interes es cero cuando no se sabe es mentir sobre el
+  /// numero mas importante de la aplicacion.
+  UNKNOWN
+}
+
+/// Categoria de servicio. Las del sistema tienen userId nulo y las comparten
+/// todos los usuarios; cada usuario puede ademas crear las suyas.
+model Category {
+  id        String  @id @db.Uuid
+  userId    String? @db.Uuid
+  name      String
+  slug      String
+  icon      String?
+  colorHex  String? @db.Char(7)
+  isSystem  Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  archivedAt DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  services Service[]
+
+  @@unique([userId, slug])
+  @@index([userId, archivedAt])
+  @@map("categories")
+}
+
+model Service {
+  id     String @id @db.Uuid
+  userId String @db.Uuid
+
+  categoryId String? @db.Uuid
+
+  /// Nombre del servicio contratado: "Internet Fibra 600 MB".
+  name          String
+  /// Empresa que factura: "Movistar".
+  providerName  String?
+  /// Numero de cuenta o de cliente ante el proveedor.
+  accountNumber String?
+
+  status   ServiceStatus @default(ACTIVE)
+  currency String        @default("ARS") @db.Char(3)
+
+  /// Primer periodo a considerar. Fecha civil, sin hora.
+  startDate DateTime  @db.Date
+  /// Baja efectiva. La baja NO borra la deuda pendiente.
+  endDate   DateTime? @db.Date
+
+  /// Como se comporta una deuda impaga en este servicio. Cambia rara vez, por
+  /// eso vive en el servicio y no en las condiciones versionadas.
+  debtPolicy DebtPolicy @default(UNKNOWN)
+  debtParams Json?
+
+  autoDebit Boolean @default(false)
+
+  notes      String?
+  archivedAt DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  conditions ServiceCondition[]
+
+  /// Habilita las claves foraneas COMPUESTAS de las tablas hijas: gracias a
+  /// esto PostgreSQL rechaza por si mismo una condicion cuyo userId no
+  /// coincida con el del servicio. El aislamiento deja de depender de que la
+  /// aplicacion se acuerde de filtrar.
+  @@unique([id, userId])
+  @@index([userId, status, archivedAt])
+  @@index([userId, categoryId])
+  @@map("services")
+}
+
+/// Condiciones pactadas de un servicio, versionadas en el tiempo.
+///
+/// INMUTABLE: cambiar las condiciones no sobrescribe la fila anterior, le pone
+/// fecha de fin y crea una nueva. Asi siempre se puede reconstruir que regia en
+/// cada periodo, que es lo que permite detectar si una factura vino distinta de
+/// lo acordado.
+model ServiceCondition {
+  id        String @id @db.Uuid
+  userId    String @db.Uuid
+  serviceId String @db.Uuid
+
+  /// Inclusivo.
+  validFrom DateTime  @db.Date
+  /// EXCLUSIVO. Nulo significa que sigue vigente.
+  validTo   DateTime? @db.Date
+
+  amountMode AmountMode @default(VARIABLE_ESTIMATED)
+  /// Monto acordado. NUMERIC, nunca float: el dinero no admite redondeo binario.
+  baseAmount Decimal?   @db.Decimal(20, 4)
+
+  frequency        BillingFrequency @default(MONTHLY)
+  /// Ancla del calendario de periodos. Define donde empieza cada periodo.
+  periodAnchorDate DateTime         @db.Date
+
+  /// Dia habitual de vencimiento, 1 a 31.
+  dueDayOfMonth Int?
+  dueDayPolicy  DueDayPolicy @default(CLAMP_TO_LAST_DAY)
+
+  /// Segundo vencimiento con recargo, habitual en los servicios argentinos.
+  secondDueDayOfMonth Int?
+  secondDueSurcharge  Decimal? @db.Decimal(9, 4)
+
+  interestModel  InterestModel @default(UNKNOWN)
+  interestParams Json?
+
+  /// Por que cambiaron las condiciones: "fin de promocion", "aumento marzo".
+  changeReason String?
+  notes        String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  service Service @relation(fields: [serviceId, userId], references: [id, userId], onDelete: Cascade)
+
+  @@unique([serviceId, validFrom])
+  @@unique([id, userId])
+  @@index([serviceId, validFrom, validTo])
+  @@map("service_conditions")
 }
