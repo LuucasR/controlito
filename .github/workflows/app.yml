@@ -1,0 +1,36 @@
+name: App
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps/app/**', '.github/workflows/app.yml']
+  pull_request:
+    paths: ['apps/app/**', '.github/workflows/app.yml']
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - run: dart format --set-exit-if-changed .
+
+      - run: flutter analyze --fatal-infos
+
+      - run: flutter test
+
+      # CRITICO: atrapa cualquier import de dart:io que rompa la compilacion web,
+      # que es el error mas caro de descubrir tarde en un proyecto Flutter multiplataforma.
+      - run: flutter build web --release
+
+      - run: flutter build apk --debug

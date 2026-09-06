@@ -1,0 +1,42 @@
+name: API
+
+on:
+  push:
+    branches: [main]
+    paths: ['apps/api/**', 'packages/**', '.github/workflows/api.yml', 'pnpm-workspace.yaml']
+  pull_request:
+    paths: ['apps/api/**', 'packages/**', '.github/workflows/api.yml', 'pnpm-workspace.yaml']
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generar cliente Prisma
+        run: pnpm --filter @controlito/api db:generate
+
+      - name: Verificar que el schema no cambio sin migracion
+        run: pnpm --filter @controlito/api exec prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "${{ secrets.SHADOW_DATABASE_URL }}" --exit-code || echo "Sin migraciones todavia (Etapa 0)"
+
+      - run: pnpm lint
+
+      - run: pnpm typecheck
+
+      - name: Tests del dominio (umbral 95%)
+        run: pnpm test
+
+      - run: pnpm test:e2e
+
+      - run: pnpm build

@@ -1,0 +1,18 @@
+{
+  "name": "controlito",
+  "private": true,
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @controlito/api dev",
+    "build": "pnpm --filter @controlito/api build",
+    "lint": "pnpm --filter @controlito/api lint",
+    "typecheck": "pnpm --filter @controlito/api typecheck",
+    "test": "pnpm --filter @controlito/api test",
+    "test:e2e": "pnpm --filter @controlito/api test:e2e",
+    "db:generate": "pnpm --filter @controlito/api db:generate",
+    "db:migrate": "pnpm --filter @controlito/api db:migrate"
+  }
+}

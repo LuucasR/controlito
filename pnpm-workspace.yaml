@@ -1,0 +1,13 @@
+packages:
+  - "apps/api"
+  - "packages/*"
+
+# pnpm 11 bloquea los scripts de instalacion por defecto (supply chain).
+# Estas dependencias los necesitan de verdad: Prisma descarga sus engines,
+# swc y esbuild compilan binarios nativos.
+onlyBuiltDependencies:
+  - "@prisma/client"
+  - "@prisma/engines"
+  - "prisma"
+  - "@swc/core"
+  - "esbuild"

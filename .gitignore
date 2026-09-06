@@ -1,0 +1,38 @@
+# Node
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Prisma
+apps/api/prisma/*.db
+
+# Flutter / Dart
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+apps/app/build/
+apps/app/.dart_tool/
+apps/app/ios/Pods/
+apps/app/android/.gradle/
+apps/app/android/local.properties
+*.g.dart.orig
+
+# Editores / SO
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

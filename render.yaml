@@ -1,0 +1,53 @@
+# Blueprint de Render. Con este archivo el deploy es reproducible:
+# en vez de configurar la app a mano en el panel, Render lee esto del repo.
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: controlito-api
+    runtime: node
+    # Virginia es la region de Render mas cercana a Argentina.
+    # La base de datos (Neon) va en US East para quedar CO-UBICADA con esta
+    # instancia: el backend le hace varias consultas por request, y esa
+    # latencia pesa mucho mas que la del celular al backend.
+    region: virginia
+    plan: free
+    rootDir: .
+    branch: main
+
+    # --prod=false es OBLIGATORIO: si NODE_ENV=production, pnpm omite las
+    # devDependencies y el build falla, porque el compilador de Nest, TypeScript
+    # y el CLI de Prisma viven ahi.
+    buildCommand: >-
+      corepack enable &&
+      pnpm install --frozen-lockfile --prod=false &&
+      pnpm --filter @controlito/api db:generate &&
+      pnpm --filter @controlito/api build
+
+    startCommand: pnpm --filter @controlito/api start
+
+    # Liveness, no readiness: este endpoint NO toca la base a proposito.
+    # Si apuntara a /health/ready, Render reiniciaria el servicio cada vez que
+    # Neon se suspende por inactividad.
+    healthCheckPath: /api/v1/health
+
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: DEFAULT_TZ
+        value: America/Argentina/Buenos_Aires
+
+      # Secretos: se cargan a mano en el panel de Render, nunca en el repo.
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+
+      # Origenes del front. Se completa cuando publiquemos la web.
+      # Nunca '*': con credentials el navegador lo rechaza.
+      - key: CORS_ORIGINS
+        sync: false
