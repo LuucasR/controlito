@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { Harness, type Sesion } from './support/app-harness';
+import { Harness, requiereBase, type Sesion } from './support/app-harness';
 
 /**
  * La garantía más importante del sistema: un usuario nunca ve datos de otro.
@@ -13,7 +13,7 @@ import { Harness, type Sesion } from './support/app-harness';
  * Convención: pedir un recurso ajeno devuelve 404, NUNCA 403. Un 403 confirma
  * que el recurso existe, y eso ya es información que no le corresponde.
  */
-describe('Aislamiento entre usuarios (e2e)', () => {
+describe.skipIf(requiereBase)('Aislamiento entre usuarios (e2e)', () => {
   let h: Harness;
   let usuarioA: Sesion;
   let usuarioB: Sesion;

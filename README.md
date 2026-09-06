@@ -44,6 +44,18 @@ pnpm test:e2e    # HTTP end to end
 pnpm build
 ```
 
+## Base de datos y tests
+
+Los tests e2e **crean y borran usuarios**, asi que corren contra una base
+aparte, declarada en `E2E_DATABASE_URL`. Produccion nunca define esa variable,
+de modo que no hay manera de que los tests toquen sus datos por descuido: si
+falta, esas suites se saltean.
+
+Para habilitarlas hace falta una branch de Neon dedicada (Branches > New Branch,
+por ejemplo `dev`) y pegar sus dos cadenas en `apps/api/.env`. Para que
+tambien corran en CI, cargar los mismos valores como secretos del repositorio
+(`E2E_DATABASE_URL` y `E2E_DIRECT_URL`).
+
 ## Detalles conocidos en Windows
 
 `prisma generate` falla con `EPERM ... query_engine-windows.dll.node` si hay un

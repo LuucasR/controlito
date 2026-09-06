@@ -1,9 +1,9 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { Harness } from './support/app-harness';
+import { Harness, requiereBase } from './support/app-harness';
 
-describe('Autenticación (e2e)', () => {
+describe.skipIf(requiereBase)('Autenticación (e2e)', () => {
   let h: Harness;
 
   beforeAll(async () => {

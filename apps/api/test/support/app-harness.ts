@@ -8,6 +8,19 @@ import { AppModule } from '@/app.module';
 import { ProblemDetailsFilter } from '@/common/http/problem-details.filter';
 import { PrismaService } from '@/infra/prisma/prisma.service';
 
+/**
+ * Base contra la que corren los tests que necesitan datos reales.
+ *
+ * Es una variable APARTE de DATABASE_URL a proposito. Los tests crean y borran
+ * usuarios, asi que apuntarlos por accidente a la base de produccion seria
+ * destructivo. Como produccion nunca define E2E_DATABASE_URL, no hay forma de
+ * que eso ocurra por descuido: si no esta definida, las suites se saltean.
+ */
+export const baseDeTests = process.env.E2E_DATABASE_URL;
+
+/** Las suites que tocan la base se saltean si no hay una configurada. */
+export const requiereBase = baseDeTests === undefined || baseDeTests === '';
+
 export interface Sesion {
   userId: string;
   email: string;
@@ -24,6 +37,13 @@ export class Harness {
   ) {}
 
   static async iniciar(): Promise<Harness> {
+    if (baseDeTests) {
+      // Se define ANTES de construir la app: Prisma lee la variable al crear
+      // el cliente, y @nestjs/config no pisa lo que ya esta en el entorno.
+      process.env.DATABASE_URL = baseDeTests;
+      process.env.DIRECT_URL = process.env.E2E_DIRECT_URL ?? baseDeTests;
+    }
+
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     const app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api');
@@ -58,7 +78,7 @@ export class Harness {
     };
   }
 
-  /** Borra todo lo creado por la corrida: la base se comparte con desarrollo. */
+  /** Borra lo que creo la corrida. El borrado en cascada limpia sus tokens. */
   async limpiar(): Promise<void> {
     if (this.creados.length > 0) {
       await this.prisma.user.deleteMany({ where: { id: { in: this.creados } } });

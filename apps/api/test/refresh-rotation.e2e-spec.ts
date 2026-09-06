@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { Harness } from './support/app-harness';
+import { Harness, requiereBase } from './support/app-harness';
 
 interface RespuestaTokens {
   accessToken: string;
@@ -9,7 +9,7 @@ interface RespuestaTokens {
   expiresIn: number;
 }
 
-describe('Rotación de refresh tokens (e2e)', () => {
+describe.skipIf(requiereBase)('Rotación de refresh tokens (e2e)', () => {
   let h: Harness;
 
   beforeAll(async () => {

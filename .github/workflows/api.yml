@@ -8,11 +8,16 @@ on:
     paths: ['apps/api/**', 'packages/**', '.github/workflows/api.yml', 'pnpm-workspace.yaml']
 
 env:
-  # Base inalcanzable a proposito: los tests de esta etapa no necesitan una base
-  # real, pero Prisma exige que la variable exista para construir el cliente.
-  # Cuando la Etapa 1 introduzca tablas, se reemplaza por una branch efimera de Neon.
+  # Prisma exige que estas existan para construir el cliente, pero no se usan:
+  # los tests que tocan la base leen E2E_DATABASE_URL.
   DATABASE_URL: postgresql://ci:ci@localhost:5432/controlito_ci
   DIRECT_URL: postgresql://ci:ci@localhost:5432/controlito_ci
+
+  # Base contra la que corren los tests que crean y borran datos.
+  # Debe apuntar a una branch de Neon dedicada, NUNCA a produccion.
+  # Si el secreto no esta configurado, esas suites se saltean en vez de fallar.
+  E2E_DATABASE_URL: ${{ secrets.E2E_DATABASE_URL }}
+  E2E_DIRECT_URL: ${{ secrets.E2E_DIRECT_URL }}
 
 jobs:
   verify:
@@ -41,6 +46,11 @@ jobs:
 
       - name: Tests del motor financiero
         run: pnpm test
+
+      - name: Avisar si no hay base de tests configurada
+        if: env.E2E_DATABASE_URL == ''
+        run: |
+          echo "::warning::E2E_DATABASE_URL no esta configurado: las suites que tocan la base se saltean. Configuralo en Settings > Secrets apuntando a una branch de Neon dedicada."
 
       - name: Tests HTTP end to end
         run: pnpm test:e2e
