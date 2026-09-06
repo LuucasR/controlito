@@ -6,6 +6,7 @@ import { PrismaModule } from '@/infra/prisma/prisma.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { CategoriesModule } from '@/modules/categories/categories.module';
 import { CyclesModule } from '@/modules/cycles/cycles.module';
+import { InvoicesModule } from '@/modules/invoices/invoices.module';
 import { HealthModule } from '@/modules/health/health.module';
 import { ServicesModule } from '@/modules/services/services.module';
 
@@ -27,6 +28,7 @@ import { ServicesModule } from '@/modules/services/services.module';
     CategoriesModule,
     ServicesModule,
     CyclesModule,
+    InvoicesModule,
     HealthModule,
   ],
 })

@@ -182,6 +182,46 @@ describe.skipIf(requiereBase)('Aislamiento entre usuarios (e2e)', () => {
       expect(res.body).toEqual([]);
     });
 
+    it('B no puede ver las facturas del servicio de A', async () => {
+      const res = await request(h.server)
+        .get(`/api/v1/services/${servicioDeA}/invoices`)
+        .set('Authorization', `Bearer ${usuarioB.accessToken}`)
+        .expect(404);
+
+      expect((res.body as { code: string }).code).toBe('SERVICE_NOT_FOUND');
+    });
+
+    it('B no puede registrar una factura en un periodo de A', async () => {
+      const ciclos = await request(h.server)
+        .get(`/api/v1/services/${servicioDeA}/cycles`)
+        .set('Authorization', `Bearer ${usuarioA.accessToken}`)
+        .expect(200);
+
+      const cicloDeA = (ciclos.body as Array<{ id: string; dueDate: string | null }>)[0]!;
+
+      const res = await request(h.server)
+        .post('/api/v1/invoices')
+        .set('Authorization', `Bearer ${usuarioB.accessToken}`)
+        .send({
+          cycleId: cicloDeA.id,
+          issueDate: '2026-09-01',
+          dueDate: '2026-09-10',
+          currentChargeAmount: '1',
+        })
+        .expect(404);
+
+      expect((res.body as { code: string }).code).toBe('CYCLE_NOT_FOUND');
+    });
+
+    it('las alertas de A no aparecen en la lista de B', async () => {
+      const res = await request(h.server)
+        .get('/api/v1/alerts')
+        .set('Authorization', `Bearer ${usuarioB.accessToken}`)
+        .expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+
     it('B no puede agregarle condiciones al servicio de A', async () => {
       await request(h.server)
         .post(`/api/v1/services/${servicioDeA}/conditions`)
@@ -227,6 +267,9 @@ describe.skipIf(requiereBase)('Aislamiento entre usuarios (e2e)', () => {
       '/api/v1/services/:id',
       '/api/v1/services/:id/conditions',
       '/api/v1/services/:id/cycles',
+      '/api/v1/services/:id/invoices',
+      '/api/v1/invoices/:id/void',
+      '/api/v1/alerts/:id/acknowledge',
     ]);
 
     const servidor = h.app.getHttpAdapter().getInstance() as {
