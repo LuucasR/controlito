@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/money/money_format.dart';
+import '../../cycles/domain/ciclo.dart';
 import '../../cycles/presentation/cycle_tile.dart';
+import '../../invoices/presentation/invoice_form_sheet.dart';
 import '../../cycles/presentation/cycles_providers.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/services_api.dart';
@@ -159,7 +161,15 @@ class _Detalle extends ConsumerWidget {
               : Column(
                   children: [
                     for (final c in lista.take(12))
-                      CycleTile(ciclo: c, mostrarServicio: false),
+                      CycleTile(
+                        ciclo: c,
+                        mostrarServicio: false,
+                        // Un periodo ya facturado no ofrece cargar otra: hay
+                        // una sola factura vigente por periodo.
+                        onTap: c.etapa == EtapaCiclo.facturado
+                            ? null
+                            : () => _cargarFactura(context, c),
+                      ),
                   ],
                 ),
         ),
@@ -182,6 +192,15 @@ class _Detalle extends ConsumerWidget {
       ],
     );
   }
+}
+
+Future<void> _cargarFactura(BuildContext context, Ciclo ciclo) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => InvoiceFormSheet(ciclo: ciclo),
+  );
 }
 
 class _TarjetaCondicion extends StatelessWidget {
