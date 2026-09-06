@@ -2,12 +2,18 @@ packages:
   - "apps/api"
   - "packages/*"
 
-# pnpm 11 bloquea los scripts de instalacion por defecto (supply chain).
-# Estas dependencias los necesitan de verdad: Prisma descarga sus engines,
-# swc y esbuild compilan binarios nativos.
-onlyBuiltDependencies:
-  - "@prisma/client"
-  - "@prisma/engines"
-  - "prisma"
-  - "@swc/core"
-  - "esbuild"
+# pnpm bloquea por defecto los scripts de instalacion de las dependencias
+# (proteccion de cadena de suministro) y, si alguno queda bloqueado, corta la
+# instalacion con ERR_PNPM_IGNORED_BUILDS.
+#
+# Estas cinco los necesitan de verdad: Prisma descarga sus motores de consulta,
+# y swc y esbuild instalan binarios nativos.
+#
+# El nombre correcto en pnpm 11 es allowBuilds, y es un MAPA. Reemplaza a
+# onlyBuiltDependencies (pnpm 10), que las versiones nuevas ignoran sin avisar.
+allowBuilds:
+  "@prisma/client": true
+  "@prisma/engines": true
+  prisma: true
+  "@swc/core": true
+  esbuild: true
