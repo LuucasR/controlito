@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/money/money_format.dart';
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
+import '../auth/domain/session.dart';
+import '../auth/presentation/providers/auth_controller.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -11,10 +13,14 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final salud = ref.watch(saludApiProvider);
+    final auth = ref.watch(authControllerProvider);
+    final saludo = auth is AuthConSesion
+        ? 'Hola, ${auth.usuario.nombreVisible}'
+        : 'Controlito';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Controlito'),
+        title: Text(saludo),
         actions: [
           IconButton(
             tooltip: 'Actualizar',
