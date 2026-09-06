@@ -158,6 +158,30 @@ describe.skipIf(requiereBase)('Aislamiento entre usuarios (e2e)', () => {
         .expect(404);
     });
 
+    it('B no puede ver los períodos del servicio de A', async () => {
+      const res = await request(h.server)
+        .get(`/api/v1/services/${servicioDeA}/cycles`)
+        .set('Authorization', `Bearer ${usuarioB.accessToken}`)
+        .expect(404);
+
+      expect((res.body as { code: string }).code).toBe('SERVICE_NOT_FOUND');
+    });
+
+    it('los proximos vencimientos de B no incluyen nada de A', async () => {
+      // A tiene un servicio con periodos proyectados; B no tiene ninguno.
+      await request(h.server)
+        .get('/api/v1/services/' + servicioDeA + '/cycles')
+        .set('Authorization', `Bearer ${usuarioA.accessToken}`)
+        .expect(200);
+
+      const res = await request(h.server)
+        .get('/api/v1/cycles/upcoming?dias=365')
+        .set('Authorization', `Bearer ${usuarioB.accessToken}`)
+        .expect(200);
+
+      expect(res.body).toEqual([]);
+    });
+
     it('B no puede agregarle condiciones al servicio de A', async () => {
       await request(h.server)
         .post(`/api/v1/services/${servicioDeA}/conditions`)
@@ -202,6 +226,7 @@ describe.skipIf(requiereBase)('Aislamiento entre usuarios (e2e)', () => {
     const cubiertas = new Set<string>([
       '/api/v1/services/:id',
       '/api/v1/services/:id/conditions',
+      '/api/v1/services/:id/cycles',
     ]);
 
     const servidor = h.app.getHttpAdapter().getInstance() as {

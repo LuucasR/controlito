@@ -241,6 +241,7 @@ model Service {
   user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   category   Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   conditions ServiceCondition[]
+  cycles     BillingCycle[]
 
   /// Habilita las claves foraneas COMPUESTAS de las tablas hijas: gracias a
   /// esto PostgreSQL rechaza por si mismo una condicion cuyo userId no
@@ -293,10 +294,110 @@ model ServiceCondition {
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
 
-  service Service @relation(fields: [serviceId, userId], references: [id, userId], onDelete: Cascade)
+  service Service        @relation(fields: [serviceId, userId], references: [id, userId], onDelete: Cascade)
+  cycles  BillingCycle[]
 
   @@unique([serviceId, validFrom])
   @@unique([id, userId])
   @@index([serviceId, validFrom, validTo])
   @@map("service_conditions")
+}
+
+// ─────────────────────────────────────────────────────────────
+// CICLOS DE FACTURACION
+// ─────────────────────────────────────────────────────────────
+
+/// Etapa del proceso documental de un periodo.
+///
+/// A proposito NO incluye "pagado", "pago parcial" ni "vencido": esos no son
+/// etapas del proceso sino funciones del saldo y de la fecha. Mezclarlos en un
+/// solo enum produce estados imposibles (un ciclo puede estar vencido Y con
+/// pago parcial a la vez) y, peor, un enum que se desincroniza del dinero real.
+enum CycleLifecycle {
+  /// Periodo futuro o en curso. El monto es una estimacion.
+  PROJECTED
+  /// El periodo cerro y la factura deberia haber llegado.
+  AWAITING_INVOICE
+  /// Hay una factura registrada.
+  INVOICED
+  /// Saldo cero y sin acciones pendientes.
+  CLOSED
+  /// El usuario declaro que ese periodo no se facturo.
+  SKIPPED
+  /// El servicio se dio de baja antes de este periodo.
+  CANCELLED
+}
+
+/// De donde sale un monto o una fecha. Permite distinguir en la interfaz lo
+/// real de lo estimado sin tener que adivinarlo.
+enum AmountSource {
+  REAL_INVOICE
+  USER_FIXED
+  USER_ESTIMATE
+  LAST_INVOICE
+  UNKNOWN
+}
+
+/// Un periodo de facturacion de un servicio.
+///
+/// Es la entidad CENTRAL, no la factura: el mayor valor de la aplicacion
+/// ocurre antes de que llegue la factura (proyectar, avisar, presupuestar). Si
+/// la raiz fuera la factura, cada periodo sin facturar seria una factura
+/// fantasma, un dato mentiroso que contaminaria todas las consultas.
+model BillingCycle {
+  id     String @id @db.Uuid
+  userId String @db.Uuid
+
+  serviceId   String  @db.Uuid
+  /// Condicion que regia al proyectar este periodo.
+  conditionId String? @db.Uuid
+
+  /// Inclusivo.
+  periodStart DateTime @db.Date
+  /// EXCLUSIVO.
+  periodEnd   DateTime @db.Date
+  /// Etiqueta legible: "2026-09", o "2026-09/10" si abarca varios meses.
+  periodKey   String
+  /// Numero de periodo desde el ancla. Da un orden estable.
+  periodIndex Int
+
+  /// Fecha en la que hay que pagar. Es el eje sobre el que el tablero agrupa:
+  /// la pregunta que responde es cuanta plata hace falta este mes.
+  dueDate          DateTime?    @db.Date
+  dueDateSource    AmountSource @default(USER_ESTIMATE)
+  /// Vencimiento proyectado original, para medir cuanto se desvio la realidad.
+  projectedDueDate DateTime?    @db.Date
+
+  /// Monto ESTIMADO del consumo del periodo. Nunca incluye deuda ni intereses:
+  /// esos son componentes separados, y sumarlos aca haria que el mes en que se
+  /// salda una deuda vieja parezca un mes carisimo de consumo.
+  expectedAmount       Decimal?     @db.Decimal(20, 4)
+  expectedAmountSource AmountSource @default(USER_ESTIMATE)
+  /// Si el usuario lo fijo a mano, el proyector no lo vuelve a tocar.
+  expectedAmountLocked Boolean      @default(false)
+
+  currency String @default("ARS") @db.Char(3)
+
+  lifecycle CycleLifecycle @default(PROJECTED)
+
+  /// Version del proyector que genero esta fila, para poder detectar filas
+  /// creadas con una logica vieja.
+  generationVersion Int      @default(1)
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+
+  service   Service           @relation(fields: [serviceId, userId], references: [id, userId], onDelete: Cascade)
+  // Cascade y no SetNull: la clave foranea es compuesta y userId es
+  // obligatorio, asi que no se puede anular. En la practica nunca se dispara:
+  // las condiciones son inmutables y no se borran, se cierran.
+  condition ServiceCondition? @relation(fields: [conditionId, userId], references: [id, userId], onDelete: Cascade)
+
+  /// LA CLAVE DE LA IDEMPOTENCIA: correr el proyector una vez o cincuenta deja
+  /// exactamente las mismas filas, porque el inicio del periodo se calcula
+  /// desde el ancla y nunca desde "hoy".
+  @@unique([serviceId, periodStart])
+  @@unique([id, userId])
+  @@index([userId, dueDate, lifecycle])
+  @@index([serviceId, periodIndex])
+  @@map("billing_cycles")
 }

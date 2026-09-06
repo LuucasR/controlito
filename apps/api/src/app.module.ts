@@ -5,6 +5,7 @@ import { ConfigModule } from '@/infra/config/config.module';
 import { PrismaModule } from '@/infra/prisma/prisma.module';
 import { AuthModule } from '@/modules/auth/auth.module';
 import { CategoriesModule } from '@/modules/categories/categories.module';
+import { CyclesModule } from '@/modules/cycles/cycles.module';
 import { HealthModule } from '@/modules/health/health.module';
 import { ServicesModule } from '@/modules/services/services.module';
 
@@ -25,6 +26,7 @@ import { ServicesModule } from '@/modules/services/services.module';
     AuthModule,
     CategoriesModule,
     ServicesModule,
+    CyclesModule,
     HealthModule,
   ],
 })
