@@ -44,6 +44,13 @@ pnpm test:e2e    # HTTP end to end
 pnpm build
 ```
 
+## Detalles conocidos en Windows
+
+`prisma generate` falla con `EPERM ... query_engine-windows.dll.node` si hay un
+`pnpm dev` corriendo: el proceso tiene tomado el motor de Prisma y Windows no
+deja reemplazar el archivo. Se soluciona parando el servidor de desarrollo antes
+de regenerar el cliente o de correr una migracion. En Linux (CI y Render) no pasa.
+
 ## Reglas del proyecto
 
 1. **El dinero nunca es `number`/`double`.** `NUMERIC(20,4)` en Postgres, `Decimal` en

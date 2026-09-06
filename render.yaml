@@ -15,12 +15,14 @@ services:
     rootDir: .
     branch: main
 
-    # --prod=false es OBLIGATORIO: si NODE_ENV=production, pnpm omite las
-    # devDependencies y el build falla, porque el compilador de Nest, TypeScript
-    # y el CLI de Prisma viven ahi.
+    # NODE_ENV=development solo durante el build: con production, pnpm omite las
+    # devDependencies y no habria compilador de Nest, TypeScript ni CLI de Prisma.
+    # Se usa la variable y no el flag --prod=false porque ese flag cambio de
+    # sintaxis entre versiones de pnpm; la variable funciona en todas.
+    # En ejecucion sigue valiendo NODE_ENV=production, definido mas abajo.
     buildCommand: >-
       corepack enable &&
-      pnpm install --frozen-lockfile --prod=false &&
+      NODE_ENV=development pnpm install --frozen-lockfile &&
       pnpm --filter @controlito/api db:generate &&
       pnpm --filter @controlito/api build
 
@@ -34,6 +36,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "24"
+      # Evita que corepack se quede esperando una confirmacion interactiva
+      # al descargar la version de pnpm fijada en package.json.
+      - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
+        value: "0"
       - key: NODE_ENV
         value: production
       - key: LOG_LEVEL
