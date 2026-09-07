@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/router/app_router.dart';
@@ -9,6 +10,12 @@ import 'core/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // URLs sin #: /servicios/123 en vez de /#/servicios/123. Hace que la URL se
+  // pueda compartir y marcar como favorita. Exige que el hosting devuelva
+  // index.html para cualquier ruta (ver web/_redirects), si no un F5 da 404.
+  // En Android es un no-op: el SDK compila el stub de navigation_non_web.
+  usePathUrlStrategy();
 
   // Sin esto, DateFormat con locale es_AR lanza en tiempo de ejecucion.
   await initializeDateFormatting('es_AR');

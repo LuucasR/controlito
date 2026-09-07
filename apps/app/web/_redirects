@@ -1,0 +1,5 @@
+# Controlito es una SPA: el ruteo lo hace go_router en el cliente, no el
+# servidor. Sin esta regla, entrar directo a /servicios/123 o apretar F5 en
+# esa URL devuelve 404, porque en el hosting no existe ese archivo.
+# El 200 (rewrite, no redirect) mantiene la URL original en la barra.
+/*    /index.html   200

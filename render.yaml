@@ -72,3 +72,52 @@ services:
       # Nunca '*': con credentials el navegador lo rechaza.
       - key: CORS_ORIGINS
         sync: false
+
+  # ---------------------------------------------------------------------------
+  # Web (Flutter compilado a HTML/JS/WASM). Sitio estatico servido por la CDN
+  # de Render: no hay servidor, no duerme como el plan free del backend.
+  #
+  # Se publica en Render y no en Cloudflare Pages para no sumar otra cuenta ni
+  # otro token: mismo panel, mismo blueprint, misma rama. El costo es que hay
+  # que traer el SDK de Flutter en cada build (~4 min), porque los runtimes de
+  # Render no lo incluyen.
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: controlito-web
+    runtime: static
+    rootDir: apps/app
+    branch: main
+
+    # El SDK se clona con la version EXACTA (tag), no con 'stable': si no, un
+    # release de Flutter podria romper el deploy sin que hayamos tocado nada.
+    buildCommand: >-
+      git clone --depth 1 --branch 3.47.2 https://github.com/flutter/flutter.git "$HOME/flutter" &&
+      export PATH="$HOME/flutter/bin:$PATH" &&
+      flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL
+
+    staticPublishPath: build/web
+
+    # Controlito es una SPA: las rutas las resuelve go_router en el cliente.
+    # Sin este rewrite, entrar directo a /servicios/123 (o apretar F5 ahi)
+    # devuelve 404 porque ese archivo no existe. El rewrite conserva la URL.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+    headers:
+      # El index no debe cachearse: es el que apunta a los bundles nuevos.
+      # Si queda cacheado, el usuario sigue viendo la version vieja tras un
+      # deploy. Los bundles si se cachean fuerte porque llevan hash en el nombre.
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
+      - path: /flutter_service_worker.js
+        name: Cache-Control
+        value: no-cache
+
+    envVars:
+      # La URL de la API se inyecta en tiempo de compilacion (--dart-define).
+      # Cambiarla exige un rebuild: es codigo, no configuracion de runtime.
+      - key: API_BASE_URL
+        value: https://controlito-api.onrender.com/api/v1
